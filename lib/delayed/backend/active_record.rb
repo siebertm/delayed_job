@@ -8,7 +8,7 @@ class ActiveRecord::Base
       super
     end
   end
-  
+
   def dump_for_delayed_job
     "#{self.class};#{id}"
   end
@@ -38,10 +38,14 @@ module Delayed
           scope = self.ready_to_run(worker_name, max_run_time)
           scope = scope.scoped(:conditions => ['priority >= ?', Worker.min_priority]) if Worker.min_priority
           scope = scope.scoped(:conditions => ['priority <= ?', Worker.max_priority]) if Worker.max_priority
-      
+
           ::ActiveRecord::Base.silence do
             scope.by_priority.all(:limit => limit)
           end
+        end
+
+        def self.find_named_job(name)
+          self.find(:first, :conditions => {:name => name})
         end
 
         # Lock this job for this worker.

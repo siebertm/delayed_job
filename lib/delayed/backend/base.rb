@@ -7,7 +7,7 @@ module Delayed
       def self.included(base)
         base.extend ClassMethods
       end
-      
+
       module ClassMethods
         # Add a job to the queue
         def enqueue(*args)
@@ -15,13 +15,27 @@ module Delayed
           unless object.respond_to?(:perform)
             raise ArgumentError, 'Cannot enqueue items which do not respond to perform'
           end
-    
+
           priority = args.first || 0
           run_at   = args[1]
-          self.create(:payload_object => object, :priority => priority.to_i, :run_at => run_at)
+          name     = args[2]
+
+          self.create(:payload_object => object, :priority => priority.to_i, :run_at => run_at, :name => name)
+        end
+
+        def enqueue_named(name, object, prio = nil, run_at=nil, &block)
+          job = self.find_named_job(name)
+          # job = find(:first, :conditions => {:name => name})
+          if job
+            job.update_attributes(:run_at => [job.run_at, run_at].compact.min)
+          else
+            job = self.enqueue(object, prio, run_at, name, &block)
+          end
+
+          job
         end
       end
-      
+
       ParseObjectFromYaml = /\!ruby\/\w+\:([^\s]+)/
 
       def failed?
@@ -35,11 +49,15 @@ module Delayed
 
       def name
         @name ||= begin
-          payload = payload_object
-          if payload.respond_to?(:display_name)
-            payload.display_name
+          if name = self['name']
+            name
           else
-            payload.class.name
+            payload = payload_object
+            if payload.respond_to?(:display_name)
+              payload.display_name
+            else
+              payload.class.name
+            end
           end
         end
       end
@@ -47,18 +65,18 @@ module Delayed
       def payload_object=(object)
         self['handler'] = object.to_yaml
       end
-      
+
       # Moved into its own method so that new_relic can trace it.
       def invoke_job
         payload_object.perform
       end
-      
+
       # Unlock this job (note: not saved to DB)
       def unlock
         self.locked_at    = nil
         self.locked_by    = nil
       end
-      
+
     private
 
       def deserialize(source)
@@ -92,7 +110,7 @@ module Delayed
       def before_save
         self.run_at ||= self.class.db_time_now
       end
-    
+
     end
   end
 end

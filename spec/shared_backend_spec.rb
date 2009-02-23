@@ -224,5 +224,41 @@ shared_examples_for 'a backend' do
       @job.locked_at.should be_nil
     end
   end
-  
+
+
+  context "named jobs" do
+    it "should call enqueue" do
+      obj = SimpleJob.new
+
+      @backend.should_receive(:enqueue).with(obj, nil, nil, "simple")
+      @backend.enqueue_named "simple", obj
+    end
+
+    it "should enqueue a job when there is no job with that name scheduled" do
+      @backend.enqueue_named "simple", SimpleJob.new
+      @backend.count.should == 1
+    end
+
+    it "should assign the name of the job" do
+      job = @backend.enqueue_named "simple", SimpleJob.new
+      job.name.should == "simple"
+    end
+
+
+    it "should not enqueue a job when there is already a job with that name" do
+      job1 = @backend.enqueue_named "simple", SimpleJob.new
+      job2 = @backend.enqueue_named "simple", SimpleJob.new
+
+      job1.should == job2
+      @backend.count.should == 1
+    end
+
+    it "should enqueue jobs with different names" do
+      job1 = @backend.enqueue_named "simple", SimpleJob.new
+      job2 = @backend.enqueue_named "simple2", SimpleJob.new
+
+      @backend.count.should == 2
+    end
+  end
+
 end

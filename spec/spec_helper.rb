@@ -14,6 +14,7 @@ ActiveRecord::Migration.verbose = false
 ActiveRecord::Schema.define do
 
   create_table :delayed_jobs, :force => true do |table|
+    table.string   :name
     table.integer  :priority, :default => 0
     table.integer  :attempts, :default => 0
     table.text     :handler

@@ -27,6 +27,7 @@ module Delayed
         key :priority,    Integer, :default => 0
         key :attempts,    Integer, :default => 0
         key :handler,     String
+        key :name,        String
         key :run_at,      Time
         key :locked_at,   Time
         key :locked_by,   String
@@ -57,6 +58,10 @@ module Delayed
           all(conditions)
         end
         
+        def self.find_named_job(name)
+          first(:name => name)
+        end
+
         # When a worker is exiting, make sure we don't have any locked jobs.
         def self.clear_locks!(worker_name)
           collection.update({:locked_by => worker_name}, {"$set" => {:locked_at => nil, :locked_by => nil}}, :multi => true)
